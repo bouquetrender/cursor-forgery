@@ -9,18 +9,20 @@ change how agents work.
 
 ## Workflow
 
-1. Run **Agent Review: Start Session** to capture a baseline.
+1. Open or reload a workspace; the extension captures a baseline automatically.
 2. Let Codex, Claude, or another agent edit workspace files.
 3. Open **AGENT CHANGES** in Explorer.
 4. Select a file or hunk to open the current file at that line.
-5. Accept, reject, or request a change from the tree or CodeLens.
+5. Accept, reject, or request a change from the tree or CodeLens. Run **Agent
+   Review: Start Session** at any time to reset the baseline manually.
 
 ## Sidebar
 
 - **Current Turn**: pending changes. Items disappear after Accept or Reject.
 - **All Agent Changes**: read-only history for the current session, collapsed by
-  default. A new change at the same location replaces the old entry. Starting a
-  new session clears the history.
+  default. Added and deleted files appear here as whole-file, read-only changes and
+  are not shown in Current Turn. A new change at the same location replaces the old
+  entry. Starting a new session clears the history.
 
 ## Review actions
 
@@ -63,8 +65,10 @@ development dependencies support Node 16.20.1.
 
 ## Current scope
 
-- Only existing UTF-8 text files are supported.
-- New, deleted, renamed, binary, and non-UTF-8 files are not reviewed.
+- Existing UTF-8 text files are reviewed as line changes.
+- Added and deleted UTF-8 text files are recorded as whole-file history without
+  Accept or Reject actions. Renames are not identified separately.
+- Binary and non-UTF-8 files are not reviewed.
 - Git workspaces use an isolated temporary environment and never modify the real
   index or staging area.
 - Non-Git and multi-root workspaces use an in-memory baseline.

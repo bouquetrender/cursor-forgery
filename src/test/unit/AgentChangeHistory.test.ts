@@ -47,4 +47,24 @@ suite("AgentChangeHistory", () => {
     history.clear();
     assert.deepStrictEqual(history.getAll(), []);
   });
+
+  test("records added and deleted files as whole-file history", () => {
+    const uri = "file:///created.txt";
+    const history = new AgentChangeHistory();
+
+    history.recordWholeFile(uri, "added");
+    history.recordWholeFile(uri, "deleted");
+
+    assert.deepStrictEqual(
+      history.getAll().map((change) => ({
+        uri: change.uri,
+        kind: change.kind,
+        hunkCount: change.hunks.length,
+      })),
+      [
+        { uri, kind: "added", hunkCount: 0 },
+        { uri, kind: "deleted", hunkCount: 0 },
+      ],
+    );
+  });
 });

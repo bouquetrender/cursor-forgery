@@ -38,6 +38,35 @@ export function activate(context: vscode.ExtensionContext): void {
     baselineProvider.refresh(uri),
   );
   let sessionStartInProgress = false;
+  const startSession = async (): Promise<void> => {
+    if (sessionStartInProgress) {
+      void vscode.window.showInformationMessage(
+        "Agent Review is already capturing a baseline.",
+      );
+      return;
+    }
+
+    sessionStartInProgress = true;
+    try {
+      const result = await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: "Starting Agent Review session",
+          cancellable: false,
+        },
+        (_progress, _token) =>
+          session.start((message) => _progress.report({ message })),
+      );
+      void vscode.window.showInformationMessage(
+        `Agent Review session started with ${result.fileCount} files using a ${result.kind} baseline.`,
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      void vscode.window.showErrorMessage(message);
+    } finally {
+      sessionStartInProgress = false;
+    }
+  };
 
   context.subscriptions.push(
     session,
@@ -63,35 +92,7 @@ export function activate(context: vscode.ExtensionContext): void {
       { scheme: "file" },
       selectionCodeLensProvider,
     ),
-    vscode.commands.registerCommand("cursorForgery.startSession", async () => {
-      if (sessionStartInProgress) {
-        void vscode.window.showInformationMessage(
-          "Agent Review is already capturing a baseline.",
-        );
-        return;
-      }
-
-      sessionStartInProgress = true;
-      try {
-        const result = await vscode.window.withProgress(
-          {
-            location: vscode.ProgressLocation.Notification,
-            title: "Starting Agent Review session",
-            cancellable: false,
-          },
-          (_progress, _token) =>
-            session.start((message) => _progress.report({ message })),
-        );
-        void vscode.window.showInformationMessage(
-          `Agent Review session started with ${result.fileCount} files using a ${result.kind} baseline.`,
-        );
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        void vscode.window.showErrorMessage(message);
-      } finally {
-        sessionStartInProgress = false;
-      }
-    }),
+    vscode.commands.registerCommand("cursorForgery.startSession", startSession),
     vscode.commands.registerCommand(
       "cursorForgery.acceptHunk",
       (target, hunkId) => hunkCommands.acceptHunk(target, hunkId),
@@ -125,6 +126,10 @@ export function activate(context: vscode.ExtensionContext): void {
       fileCommands.rejectAll(),
     ),
   );
+
+  if (vscode.workspace.workspaceFolders?.length) {
+    void startSession();
+  }
 }
 
 export function deactivate(): void {}

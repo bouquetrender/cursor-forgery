@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import type { DiffService } from "../diff/DiffService";
-import type { DiffHunk, FileDiff } from "../model";
+import type { AgentFileChangeKind, DiffHunk, FileDiff } from "../model";
 
 export class CurrentTurnItem extends vscode.TreeItem {
   constructor() {
@@ -21,24 +21,35 @@ export class FileChangeItem extends vscode.TreeItem {
     readonly uri: vscode.Uri,
     readonly fileDiff: FileDiff,
     readonly reviewable = true,
+    readonly kind: AgentFileChangeKind = "modified",
   ) {
     super(
       vscode.workspace.asRelativePath(uri),
-      vscode.TreeItemCollapsibleState.Expanded,
+      kind === "modified"
+        ? vscode.TreeItemCollapsibleState.Collapsed
+        : vscode.TreeItemCollapsibleState.None,
     );
     this.contextValue = reviewable
       ? "cursorForgery.file"
       : "cursorForgery.historyFile";
     this.resourceUri = uri;
-    this.description = `${fileDiff.hunks.length} hunk${
-      fileDiff.hunks.length === 1 ? "" : "s"
-    }`;
-    this.tooltip = uri.fsPath;
-    this.command = {
-      command: "cursorForgery.openHunk",
-      title: "Open First Change",
-      arguments: [uri.toString(), fileDiff.hunks[0].id],
-    };
+    if (kind === "modified") {
+      this.description = `${fileDiff.hunks.length} hunk${
+        fileDiff.hunks.length === 1 ? "" : "s"
+      }`;
+      this.tooltip = uri.fsPath;
+    } else {
+      this.description = kind === "added" ? "Added" : "Deleted";
+      this.tooltip = `${uri.fsPath} (${this.description})`;
+    }
+    const firstHunk = fileDiff.hunks[0];
+    if (firstHunk) {
+      this.command = {
+        command: "cursorForgery.openHunk",
+        title: "Open First Change",
+        arguments: [uri.toString(), firstHunk.id],
+      };
+    }
   }
 }
 
@@ -60,7 +71,9 @@ export class HunkChangeItem extends vscode.TreeItem {
       title: "Open Change",
       arguments: [uri.toString(), hunk.id],
     };
-    this.iconPath = new vscode.ThemeIcon("diff");
+    if (!reviewable) {
+      this.iconPath = new vscode.ThemeIcon("diff");
+    }
   }
 
   get hunkId(): string {
@@ -107,9 +120,9 @@ export class ChangeTreeProvider
     }
 
     if (element instanceof AllAgentChangesItem) {
-      return this.diffs.getAllAgentChanges().map((fileDiff) => {
-        const uri = vscode.Uri.parse(fileDiff.uri);
-        return new FileChangeItem(uri, fileDiff, false);
+      return this.diffs.getAllAgentChanges().map((fileChange) => {
+        const uri = vscode.Uri.parse(fileChange.uri);
+        return new FileChangeItem(uri, fileChange, false, fileChange.kind);
       });
     }
 

@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import { DiffService } from "../diff/DiffService";
 import type { BaselineStore } from "./BaselineStore";
+import { readTextFile } from "./readTextFile";
 
 const WATCH_DEBOUNCE_MS = 250;
 const DOCUMENT_ORIGIN_DELAY_MS = 100;
@@ -59,7 +60,9 @@ export class ReviewSession implements vscode.Disposable {
     this.active = true;
     report?.("Starting filesystem watcher…");
     this.watcher = vscode.workspace.createFileSystemWatcher("**/*");
+    this.watcher.onDidCreate((uri) => this.handleFileSystemCreate(uri));
     this.watcher.onDidChange((uri) => this.handleFileSystemChange(uri));
+    this.watcher.onDidDelete((uri) => this.handleFileSystemDelete(uri));
     return {
       fileCount: this.baselineStore.uris().length,
       kind: this.baselineStore.kind,
@@ -118,6 +121,36 @@ export class ReviewSession implements vscode.Disposable {
   private handleFileSystemChange(uri: vscode.Uri): void {
     this.externalChangeTimes.set(uri.toString(), Date.now());
     this.scheduleRecompute(uri);
+  }
+
+  private handleFileSystemCreate(uri: vscode.Uri): void {
+    if (!this.active || !isReviewableWorkspaceUri(uri)) {
+      return;
+    }
+    if (this.baselineStore.has(uri)) {
+      this.scheduleRecompute(uri);
+      return;
+    }
+    void this.recordAddedFile(uri);
+  }
+
+  private async recordAddedFile(uri: vscode.Uri): Promise<void> {
+    const content = await readTextFile(uri);
+    if (!this.active || content === undefined) {
+      return;
+    }
+    this.diffs.recordWholeFileChange(uri, "added");
+  }
+
+  private handleFileSystemDelete(uri: vscode.Uri): void {
+    if (
+      !this.active ||
+      (!this.baselineStore.has(uri) &&
+        !this.diffs.hasWholeFileChange(uri, "added"))
+    ) {
+      return;
+    }
+    this.diffs.recordWholeFileChange(uri, "deleted");
   }
 
   private handleDocumentChange(event: vscode.TextDocumentChangeEvent): void {
@@ -213,4 +246,18 @@ export class ReviewSession implements vscode.Disposable {
     this.externalChangeTimes.clear();
     this.active = false;
   }
+}
+
+function isReviewableWorkspaceUri(uri: vscode.Uri): boolean {
+  if (uri.scheme !== "file") {
+    return false;
+  }
+  const folder = vscode.workspace.getWorkspaceFolder(uri);
+  if (!folder) {
+    return false;
+  }
+  const relativePath = uri.path.slice(folder.uri.path.length + 1);
+  return !relativePath
+    .split("/")
+    .some((segment) => segment === ".git" || segment === "node_modules");
 }

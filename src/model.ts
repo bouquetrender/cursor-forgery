@@ -17,3 +17,9 @@ export interface FileDiff {
   readonly uri: string;
   readonly hunks: readonly DiffHunk[];
 }
+
+export type AgentFileChangeKind = "modified" | "added" | "deleted";
+
+export interface AgentFileChange extends FileDiff {
+  readonly kind: AgentFileChangeKind;
+}

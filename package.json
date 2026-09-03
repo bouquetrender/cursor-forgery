@@ -2,7 +2,7 @@
   "name": "cursor-forgery",
   "displayName": "cursor-forgery",
   "description": "Emulate Cursor-style editor interactions for Codex context and agent change review.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "local",
   "author": "liujw",
   "repository": {

@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import type { FileDiff } from "../model";
+import type { AgentFileChange, FileDiff } from "../model";
 import type { BaselineStore } from "../session/BaselineStore";
 import { AgentChangeHistory } from "./AgentChangeHistory";
 import { computeHunks } from "./computeHunks";
@@ -23,8 +23,20 @@ export class DiffService implements vscode.Disposable {
     return this.fileDiffs.get(uri.toString());
   }
 
-  getAllAgentChanges(): readonly FileDiff[] {
+  getAllAgentChanges(): readonly AgentFileChange[] {
     return this.history.getAll();
+  }
+
+  recordWholeFileChange(uri: vscode.Uri, kind: "added" | "deleted"): void {
+    if (kind === "deleted") {
+      this.fileDiffs.delete(uri.toString());
+    }
+    this.history.recordWholeFile(uri.toString(), kind);
+    this.changeEmitter.fire();
+  }
+
+  hasWholeFileChange(uri: vscode.Uri, kind: "added" | "deleted"): boolean {
+    return this.history.hasWholeFile(uri.toString(), kind);
   }
 
   getHunk(uri: vscode.Uri, hunkId: string) {
@@ -51,7 +63,7 @@ export class DiffService implements vscode.Disposable {
         this.history.record(fileDiff);
       }
     } catch {
-      // Deleted, binary, and non-UTF-8 files are outside the current review scope.
+      // Lifecycle history is recorded before unreadable files leave the reviewable set.
       this.fileDiffs.delete(uri.toString());
     }
 

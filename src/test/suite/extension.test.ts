@@ -4,6 +4,7 @@ import * as path from "path";
 import * as vscode from "vscode";
 import { DiffService } from "../../diff/DiffService";
 import { MemoryBaselineStore } from "../../session/MemoryBaselineStore";
+import { ReviewSession } from "../../session/ReviewSession";
 import { WorkspaceBaselineStore } from "../../session/WorkspaceBaselineStore";
 import {
   AllAgentChangesItem,
@@ -23,14 +24,20 @@ suite("Agent Diff Review extension", () => {
   assert.ok(workspaceFolder);
   const sampleUri = vscode.Uri.joinPath(workspaceFolder.uri, "sample.txt");
   const secondUri = vscode.Uri.joinPath(workspaceFolder.uri, "second.txt");
+  const createdUri = vscode.Uri.joinPath(workspaceFolder.uri, "created.txt");
+  const deletedUri = vscode.Uri.joinPath(workspaceFolder.uri, "deleted.txt");
 
   setup(async () => {
+    await deleteIfExists(createdUri);
+    await deleteIfExists(deletedUri);
     await replaceAndSave(sampleUri, ORIGINAL);
     await replaceAndSave(secondUri, SECOND_ORIGINAL);
     await vscode.commands.executeCommand("cursorForgery.startSession");
   });
 
   teardown(async () => {
+    await deleteIfExists(createdUri);
+    await deleteIfExists(deletedUri);
     await replaceAndSave(sampleUri, ORIGINAL);
     await replaceAndSave(secondUri, SECOND_ORIGINAL);
   });
@@ -128,6 +135,10 @@ suite("Agent Diff Review extension", () => {
       assert.strictEqual(roots.length, 2);
       assert.ok(roots[0] instanceof CurrentTurnItem);
       assert.strictEqual(roots[0].label, "Current Turn");
+      assert.strictEqual(
+        roots[0].collapsibleState,
+        vscode.TreeItemCollapsibleState.Expanded,
+      );
       assert.ok(roots[1] instanceof AllAgentChangesItem);
       assert.strictEqual(roots[1].label, "All Agent Changes");
       assert.strictEqual(
@@ -150,6 +161,14 @@ suite("Agent Diff Review extension", () => {
       assert.ok(sampleFile instanceof FileChangeItem);
       assert.ok(secondFile instanceof FileChangeItem);
       assert.strictEqual(sampleFile.contextValue, "cursorForgery.file");
+      assert.strictEqual(
+        sampleFile.collapsibleState,
+        vscode.TreeItemCollapsibleState.Collapsed,
+      );
+      assert.strictEqual(
+        secondFile.collapsibleState,
+        vscode.TreeItemCollapsibleState.Collapsed,
+      );
       assert.strictEqual(sampleFile.command?.command, "cursorForgery.openHunk");
 
       const sampleHunks = provider.getChildren(sampleFile);
@@ -251,6 +270,103 @@ suite("Agent Diff Review extension", () => {
       provider.dispose();
       diffs.dispose();
       store.clear();
+    }
+  });
+
+  test("records added and deleted files only in agent change history", async function () {
+    this.timeout(5_000);
+    const store = new MemoryBaselineStore();
+    const diffs = new DiffService(store);
+    const session = new ReviewSession(store, diffs);
+    const provider = new ChangeTreeProvider(diffs);
+
+    try {
+      await session.start();
+      await vscode.workspace.fs.writeFile(createdUri, Buffer.from("first\n"));
+      await waitForWatcher();
+      await vscode.workspace.fs.writeFile(createdUri, Buffer.from("second\n"));
+      await waitForWatcher();
+
+      const rootsAfterCreate = provider.getChildren();
+      assert.strictEqual(rootsAfterCreate.length, 2);
+      assert.deepStrictEqual(provider.getChildren(rootsAfterCreate[0]), []);
+      const addedFiles = provider.getChildren(rootsAfterCreate[1]);
+      assert.strictEqual(addedFiles.length, 1);
+      const addedFile = addedFiles[0];
+      assert.ok(addedFile instanceof FileChangeItem);
+      assert.strictEqual(addedFile.kind, "added");
+      assert.strictEqual(addedFile.description, "Added");
+      assert.strictEqual(addedFile.command, undefined);
+      assert.strictEqual(
+        addedFile.collapsibleState,
+        vscode.TreeItemCollapsibleState.None,
+      );
+
+      await vscode.workspace.fs.delete(createdUri);
+      await waitForWatcher();
+
+      assert.deepStrictEqual(provider.getChildren(rootsAfterCreate[0]), []);
+      const lifecycleFiles = provider.getChildren(rootsAfterCreate[1]);
+      assert.deepStrictEqual(
+        lifecycleFiles.map((item) =>
+          item instanceof FileChangeItem ? item.kind : undefined,
+        ),
+        ["added", "deleted"],
+      );
+      assert.ok(
+        lifecycleFiles.every(
+          (item) =>
+            item instanceof FileChangeItem &&
+            item.contextValue === "cursorForgery.historyFile" &&
+            item.command === undefined,
+        ),
+      );
+    } finally {
+      provider.dispose();
+      session.dispose();
+    }
+  });
+
+  test("removes a deleted existing file from the current turn", async () => {
+    await vscode.workspace.fs.writeFile(deletedUri, Buffer.from("before\n"));
+    const store = new MemoryBaselineStore();
+    const diffs = new DiffService(store);
+    const session = new ReviewSession(store, diffs);
+    const provider = new ChangeTreeProvider(diffs);
+
+    try {
+      await session.start();
+      await vscode.workspace.fs.writeFile(deletedUri, Buffer.from("after\n"));
+      await waitForWatcher();
+
+      const rootsAfterModify = provider.getChildren();
+      assert.strictEqual(rootsAfterModify.length, 2);
+      assert.strictEqual(provider.getChildren(rootsAfterModify[0]).length, 1);
+
+      await vscode.workspace.fs.delete(deletedUri);
+      await waitForWatcher();
+
+      assert.deepStrictEqual(provider.getChildren(rootsAfterModify[0]), []);
+      const deletedHistory = provider
+        .getChildren(rootsAfterModify[1])
+        .filter(
+          (item) =>
+            item instanceof FileChangeItem &&
+            item.uri.toString() === deletedUri.toString(),
+        );
+      assert.deepStrictEqual(
+        deletedHistory.map((item) =>
+          item instanceof FileChangeItem ? item.kind : undefined,
+        ),
+        ["modified", "deleted"],
+      );
+      const deletedFile = deletedHistory[1];
+      assert.ok(deletedFile instanceof FileChangeItem);
+      assert.strictEqual(deletedFile.description, "Deleted");
+      assert.strictEqual(deletedFile.command, undefined);
+    } finally {
+      provider.dispose();
+      session.dispose();
     }
   });
 
@@ -409,4 +525,17 @@ async function replaceAndSave(uri: vscode.Uri, content: string): Promise<void> {
   );
   await vscode.workspace.applyEdit(edit);
   await document.save();
+}
+
+async function deleteIfExists(uri: vscode.Uri): Promise<void> {
+  try {
+    await vscode.workspace.fs.delete(uri);
+  } catch (error) {
+    if (
+      !(error instanceof vscode.FileSystemError) ||
+      error.code !== "FileNotFound"
+    ) {
+      throw error;
+    }
+  }
 }
