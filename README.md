@@ -1,5 +1,7 @@
 # cursor-forgery
 
+<img width="2852" height="1806" alt="ScreenShot_2026-09-03_181158_713" src="https://github.com/user-attachments/assets/b3858d45-e78c-4398-9b2a-ed25f9cfb535" />
+
 [English](README.md) | [简体中文](README.zh-CN.md)
 
 `cursor-forgery` is a VS Code extension that emulates Cursor interactions. It
