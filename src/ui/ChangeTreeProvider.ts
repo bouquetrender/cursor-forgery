@@ -2,37 +2,62 @@ import * as vscode from "vscode";
 import type { DiffService } from "../diff/DiffService";
 import type { DiffHunk, FileDiff } from "../model";
 
+export class CurrentTurnItem extends vscode.TreeItem {
+  constructor() {
+    super("Current Turn", vscode.TreeItemCollapsibleState.Expanded);
+  }
+}
+
+export class AllAgentChangesItem extends vscode.TreeItem {
+  constructor() {
+    super("All Agent Changes", vscode.TreeItemCollapsibleState.Collapsed);
+  }
+}
+
 export class FileChangeItem extends vscode.TreeItem {
-  readonly contextValue = "cursorForgery.file";
+  readonly contextValue: string;
 
   constructor(
     readonly uri: vscode.Uri,
     readonly fileDiff: FileDiff,
+    readonly reviewable = true,
   ) {
     super(
       vscode.workspace.asRelativePath(uri),
       vscode.TreeItemCollapsibleState.Expanded,
     );
+    this.contextValue = reviewable
+      ? "cursorForgery.file"
+      : "cursorForgery.historyFile";
     this.resourceUri = uri;
     this.description = `${fileDiff.hunks.length} hunk${
       fileDiff.hunks.length === 1 ? "" : "s"
     }`;
     this.tooltip = uri.fsPath;
+    this.command = {
+      command: "cursorForgery.openHunk",
+      title: "Open First Change",
+      arguments: [uri.toString(), fileDiff.hunks[0].id],
+    };
   }
 }
 
 export class HunkChangeItem extends vscode.TreeItem {
-  readonly contextValue = "cursorForgery.hunk";
+  readonly contextValue: string;
 
   constructor(
     readonly uri: vscode.Uri,
     readonly hunk: DiffHunk,
+    readonly reviewable = true,
   ) {
     super(formatHunkLabel(hunk), vscode.TreeItemCollapsibleState.None);
+    this.contextValue = reviewable
+      ? "cursorForgery.hunk"
+      : "cursorForgery.historyHunk";
     this.description = summarizeHunk(hunk);
     this.command = {
-      command: "cursorForgery.openHunkDiff",
-      title: "Show Hunk Diff",
+      command: "cursorForgery.openHunk",
+      title: "Open Change",
       arguments: [uri.toString(), hunk.id],
     };
     this.iconPath = new vscode.ThemeIcon("diff");
@@ -43,7 +68,11 @@ export class HunkChangeItem extends vscode.TreeItem {
   }
 }
 
-type ChangeTreeItem = FileChangeItem | HunkChangeItem;
+type ChangeTreeItem =
+  | CurrentTurnItem
+  | AllAgentChangesItem
+  | FileChangeItem
+  | HunkChangeItem;
 
 export class ChangeTreeProvider
   implements vscode.TreeDataProvider<ChangeTreeItem>, vscode.Disposable
@@ -65,15 +94,28 @@ export class ChangeTreeProvider
 
   getChildren(element?: ChangeTreeItem): ChangeTreeItem[] {
     if (!element) {
+      return this.diffs.getAllAgentChanges().length > 0
+        ? [new CurrentTurnItem(), new AllAgentChangesItem()]
+        : [];
+    }
+
+    if (element instanceof CurrentTurnItem) {
       return this.diffs.getAll().map((fileDiff) => {
         const uri = vscode.Uri.parse(fileDiff.uri);
         return new FileChangeItem(uri, fileDiff);
       });
     }
 
+    if (element instanceof AllAgentChangesItem) {
+      return this.diffs.getAllAgentChanges().map((fileDiff) => {
+        const uri = vscode.Uri.parse(fileDiff.uri);
+        return new FileChangeItem(uri, fileDiff, false);
+      });
+    }
+
     if (element instanceof FileChangeItem) {
       return element.fileDiff.hunks.map(
-        (hunk) => new HunkChangeItem(element.uri, hunk),
+        (hunk) => new HunkChangeItem(element.uri, hunk, element.reviewable),
       );
     }
 

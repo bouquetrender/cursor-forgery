@@ -1,10 +1,12 @@
 import * as vscode from "vscode";
 import type { FileDiff } from "../model";
 import type { BaselineStore } from "../session/BaselineStore";
+import { AgentChangeHistory } from "./AgentChangeHistory";
 import { computeHunks } from "./computeHunks";
 
 export class DiffService implements vscode.Disposable {
   private readonly fileDiffs = new Map<string, FileDiff>();
+  private readonly history = new AgentChangeHistory();
   private readonly changeEmitter = new vscode.EventEmitter<void>();
 
   readonly onDidChange = this.changeEmitter.event;
@@ -21,8 +23,16 @@ export class DiffService implements vscode.Disposable {
     return this.fileDiffs.get(uri.toString());
   }
 
+  getAllAgentChanges(): readonly FileDiff[] {
+    return this.history.getAll();
+  }
+
   getHunk(uri: vscode.Uri, hunkId: string) {
     return this.get(uri)?.hunks.find((hunk) => hunk.id === hunkId);
+  }
+
+  getHistoricalHunk(uri: vscode.Uri, hunkId: string) {
+    return this.history.getHunk(uri.toString(), hunkId);
   }
 
   async recompute(uri: vscode.Uri): Promise<void> {
@@ -36,7 +46,9 @@ export class DiffService implements vscode.Disposable {
       if (hunks.length === 0) {
         this.fileDiffs.delete(uri.toString());
       } else {
-        this.fileDiffs.set(uri.toString(), { uri: uri.toString(), hunks });
+        const fileDiff = { uri: uri.toString(), hunks };
+        this.fileDiffs.set(uri.toString(), fileDiff);
+        this.history.record(fileDiff);
       }
     } catch {
       // Deleted, binary, and non-UTF-8 files are outside the current review scope.
@@ -51,10 +63,11 @@ export class DiffService implements vscode.Disposable {
   }
 
   clear(): void {
-    if (this.fileDiffs.size === 0) {
+    if (this.fileDiffs.size === 0 && this.history.getAll().length === 0) {
       return;
     }
     this.fileDiffs.clear();
+    this.history.clear();
     this.changeEmitter.fire();
   }
 

@@ -120,6 +120,41 @@ export class HunkCommands {
     );
   }
 
+  async openHunk(
+    target?: HunkCommandTarget | string,
+    hunkId?: string,
+  ): Promise<void> {
+    const resolved =
+      this.resolveHunk(target, hunkId) ??
+      this.resolveHistoricalHunk(target, hunkId);
+    if (!resolved) {
+      return this.showNoHunkMessage();
+    }
+    const { uri } = resolved;
+    await this.session.recompute(uri);
+    const hunk =
+      this.diffs.getHunk(uri, resolved.hunk.id) ??
+      this.diffs.getHistoricalHunk(uri, resolved.hunk.id);
+    if (!hunk) {
+      return;
+    }
+
+    const document = await vscode.workspace.openTextDocument(uri);
+    const editor = await vscode.window.showTextDocument(document, {
+      preview: false,
+    });
+    const line = Math.min(
+      hunk.newStartLine,
+      Math.max(document.lineCount - 1, 0),
+    );
+    const position = new vscode.Position(line, 0);
+    editor.selection = new vscode.Selection(position, position);
+    editor.revealRange(
+      new vscode.Range(position, position),
+      vscode.TextEditorRevealType.InCenterIfOutsideViewport,
+    );
+  }
+
   private resolveHunk(target?: HunkCommandTarget | string, hunkId?: string) {
     if (typeof target === "string" && hunkId) {
       const uri = vscode.Uri.parse(target);
@@ -146,6 +181,22 @@ export class HunkCommands {
       : hunks.length === 1
         ? { uri, hunk: hunks[0] }
         : undefined;
+  }
+
+  private resolveHistoricalHunk(
+    target?: HunkCommandTarget | string,
+    hunkId?: string,
+  ) {
+    if (typeof target === "string" && hunkId) {
+      const uri = vscode.Uri.parse(target);
+      const hunk = this.diffs.getHistoricalHunk(uri, hunkId);
+      return hunk ? { uri, hunk } : undefined;
+    }
+    if (typeof target === "object" && target.hunkId) {
+      const hunk = this.diffs.getHistoricalHunk(target.uri, target.hunkId);
+      return hunk ? { uri: target.uri, hunk } : undefined;
+    }
+    return undefined;
   }
 
   private showNoHunkMessage(): void {

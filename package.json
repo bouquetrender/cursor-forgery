@@ -47,6 +47,10 @@
         "title": "Agent Review: View Before ↔ After"
       },
       {
+        "command": "cursorForgery.openHunk",
+        "title": "Agent Review: Open Change"
+      },
+      {
         "command": "cursorForgery.acceptFile",
         "title": "Agent Review: Accept File",
         "icon": "$(check-all)"

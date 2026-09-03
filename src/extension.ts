@@ -108,6 +108,10 @@ export function activate(context: vscode.ExtensionContext): void {
       "cursorForgery.openHunkDiff",
       (target, hunkId) => hunkCommands.openHunkDiff(target, hunkId),
     ),
+    vscode.commands.registerCommand(
+      "cursorForgery.openHunk",
+      (target, hunkId) => hunkCommands.openHunk(target, hunkId),
+    ),
     vscode.commands.registerCommand("cursorForgery.acceptFile", (target) =>
       fileCommands.acceptFile(target),
     ),

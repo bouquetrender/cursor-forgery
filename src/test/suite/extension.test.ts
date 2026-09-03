@@ -2,8 +2,16 @@ import * as assert from "assert";
 import { readFileSync } from "fs";
 import * as path from "path";
 import * as vscode from "vscode";
+import { DiffService } from "../../diff/DiffService";
 import { MemoryBaselineStore } from "../../session/MemoryBaselineStore";
 import { WorkspaceBaselineStore } from "../../session/WorkspaceBaselineStore";
+import {
+  AllAgentChangesItem,
+  ChangeTreeProvider,
+  CurrentTurnItem,
+  FileChangeItem,
+  HunkChangeItem,
+} from "../../ui/ChangeTreeProvider";
 
 const ORIGINAL = "alpha\nbeta\ngamma\n";
 const MODIFIED = "alpha\nBETA\ngamma\n";
@@ -31,6 +39,7 @@ suite("Agent Diff Review extension", () => {
     const commands = await vscode.commands.getCommands(true);
     for (const command of [
       "cursorForgery.startSession",
+      "cursorForgery.openHunk",
       "cursorForgery.openHunkDiff",
       "cursorForgery.acceptHunk",
       "cursorForgery.rejectHunk",
@@ -96,6 +105,153 @@ suite("Agent Diff Review extension", () => {
     assert.ok(reject?.arguments);
     await vscode.commands.executeCommand(reject.command, ...reject.arguments);
     assert.strictEqual(document.getText(), ORIGINAL);
+  });
+
+  test("separates pending and historical changes and opens their tree rows", async () => {
+    const store = new MemoryBaselineStore();
+    const diffs = new DiffService(store);
+    const provider = new ChangeTreeProvider(diffs);
+
+    try {
+      await store.capture({ uris: [sampleUri, secondUri] });
+      assert.deepStrictEqual(provider.getChildren(), []);
+
+      await vscode.workspace.fs.writeFile(sampleUri, Buffer.from(MODIFIED));
+      await vscode.workspace.fs.writeFile(
+        secondUri,
+        Buffer.from(SECOND_MODIFIED),
+      );
+      await waitForWatcher();
+      await diffs.recomputeAll();
+
+      const roots = provider.getChildren();
+      assert.strictEqual(roots.length, 2);
+      assert.ok(roots[0] instanceof CurrentTurnItem);
+      assert.strictEqual(roots[0].label, "Current Turn");
+      assert.ok(roots[1] instanceof AllAgentChangesItem);
+      assert.strictEqual(roots[1].label, "All Agent Changes");
+      assert.strictEqual(
+        roots[1].collapsibleState,
+        vscode.TreeItemCollapsibleState.Collapsed,
+      );
+
+      const files = provider.getChildren(roots[0]);
+      assert.strictEqual(files.length, 2);
+      const sampleFile = files.find(
+        (item) =>
+          item instanceof FileChangeItem &&
+          item.uri.toString() === sampleUri.toString(),
+      );
+      const secondFile = files.find(
+        (item) =>
+          item instanceof FileChangeItem &&
+          item.uri.toString() === secondUri.toString(),
+      );
+      assert.ok(sampleFile instanceof FileChangeItem);
+      assert.ok(secondFile instanceof FileChangeItem);
+      assert.strictEqual(sampleFile.contextValue, "cursorForgery.file");
+      assert.strictEqual(sampleFile.command?.command, "cursorForgery.openHunk");
+
+      const sampleHunks = provider.getChildren(sampleFile);
+      const secondHunks = provider.getChildren(secondFile);
+      assert.strictEqual(sampleHunks.length, 1);
+      assert.strictEqual(secondHunks.length, 1);
+      assert.ok(sampleHunks[0] instanceof HunkChangeItem);
+      assert.strictEqual(sampleHunks[0].contextValue, "cursorForgery.hunk");
+      assert.strictEqual(
+        sampleHunks[0].command?.command,
+        "cursorForgery.openHunk",
+      );
+
+      const fileCommand = sampleFile.command;
+      assert.ok(fileCommand?.arguments);
+      await vscode.commands.executeCommand(
+        fileCommand.command,
+        ...fileCommand.arguments,
+      );
+      assert.strictEqual(
+        vscode.window.activeTextEditor?.document.uri.toString(),
+        sampleUri.toString(),
+      );
+      assert.strictEqual(
+        vscode.window.activeTextEditor?.selection.active.line,
+        1,
+      );
+      assert.ok(
+        vscode.window.tabGroups.activeTabGroup.activeTab?.input instanceof
+          vscode.TabInputText,
+      );
+
+      const editor = vscode.window.activeTextEditor;
+      assert.ok(editor);
+      editor.selection = new vscode.Selection(0, 0, 0, 0);
+      const hunkCommand = sampleHunks[0].command;
+      assert.ok(hunkCommand?.arguments);
+      await vscode.commands.executeCommand(
+        hunkCommand.command,
+        ...hunkCommand.arguments,
+      );
+      assert.strictEqual(
+        vscode.window.activeTextEditor?.selection.active.line,
+        1,
+      );
+
+      const secondHunkCommand = secondHunks[0].command;
+      assert.ok(secondHunkCommand?.arguments);
+      await vscode.commands.executeCommand(
+        "cursorForgery.acceptHunk",
+        ...hunkCommand.arguments,
+      );
+      await vscode.commands.executeCommand(
+        "cursorForgery.rejectHunk",
+        ...secondHunkCommand.arguments,
+      );
+      await store.set(sampleUri, MODIFIED);
+      await diffs.recomputeAll();
+
+      const reviewedRoots = provider.getChildren();
+      assert.strictEqual(reviewedRoots.length, 2);
+      assert.deepStrictEqual(provider.getChildren(reviewedRoots[0]), []);
+      const historyFiles = provider.getChildren(reviewedRoots[1]);
+      assert.strictEqual(historyFiles.length, 2);
+      assert.ok(historyFiles.every((item) => item instanceof FileChangeItem));
+      assert.ok(
+        historyFiles.every(
+          (item) => item.contextValue === "cursorForgery.historyFile",
+        ),
+      );
+
+      const rejectedHistoryFile = historyFiles.find(
+        (item) =>
+          item instanceof FileChangeItem &&
+          item.uri.toString() === secondUri.toString(),
+      );
+      assert.ok(rejectedHistoryFile instanceof FileChangeItem);
+      const rejectedHistoryHunks = provider.getChildren(rejectedHistoryFile);
+      assert.strictEqual(rejectedHistoryHunks.length, 1);
+      assert.strictEqual(
+        rejectedHistoryHunks[0].contextValue,
+        "cursorForgery.historyHunk",
+      );
+      const historyCommand = rejectedHistoryHunks[0].command;
+      assert.ok(historyCommand?.arguments);
+      await vscode.commands.executeCommand(
+        historyCommand.command,
+        ...historyCommand.arguments,
+      );
+      assert.strictEqual(
+        vscode.window.activeTextEditor?.document.uri.toString(),
+        secondUri.toString(),
+      );
+      assert.strictEqual(
+        vscode.window.activeTextEditor?.selection.active.line,
+        1,
+      );
+    } finally {
+      provider.dispose();
+      diffs.dispose();
+      store.clear();
+    }
   });
 
   test("accept updates the baseline without changing the current file", async () => {
