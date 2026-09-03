@@ -34,6 +34,7 @@ suite("Agent Diff Review extension", () => {
       "cursorForgery.openHunkDiff",
       "cursorForgery.acceptHunk",
       "cursorForgery.rejectHunk",
+      "cursorForgery.requestHunkChange",
       "cursorForgery.acceptFile",
       "cursorForgery.rejectFile",
       "cursorForgery.acceptAll",
@@ -80,13 +81,14 @@ suite("Agent Diff Review extension", () => {
       sampleUri,
     );
 
-    assert.strictEqual(lenses.length, 3);
+    assert.strictEqual(lenses.length, 4);
     assert.deepStrictEqual(
       lenses.map((lens) => lens.command?.command),
       [
         "cursorForgery.openHunkDiff",
         "cursorForgery.acceptHunk",
         "cursorForgery.rejectHunk",
+        "cursorForgery.requestHunkChange",
       ],
     );
 
@@ -134,7 +136,7 @@ suite("Agent Diff Review extension", () => {
   test("user editing a pending file takes ownership of its current state", async () => {
     await vscode.workspace.fs.writeFile(sampleUri, Buffer.from(MODIFIED));
     await waitForWatcher();
-    assert.strictEqual((await getCodeLenses(sampleUri)).length, 3);
+    assert.strictEqual((await getCodeLenses(sampleUri)).length, 4);
     const document = await vscode.workspace.openTextDocument(sampleUri);
     const edit = new vscode.WorkspaceEdit();
     edit.insert(sampleUri, document.positionAt(document.getText().length), "user line\n");
@@ -166,7 +168,7 @@ suite("Agent Diff Review extension", () => {
     const twoHunks = "ALPHA\nbeta\nGAMMA\n";
     await vscode.workspace.fs.writeFile(sampleUri, Buffer.from(twoHunks));
     await waitForWatcher();
-    assert.strictEqual((await getCodeLenses(sampleUri)).length, 6);
+    assert.strictEqual((await getCodeLenses(sampleUri)).length, 8);
 
     await vscode.commands.executeCommand("cursorForgery.rejectFile", sampleUri);
 
@@ -179,8 +181,8 @@ suite("Agent Diff Review extension", () => {
     await vscode.workspace.fs.writeFile(sampleUri, Buffer.from(MODIFIED));
     await vscode.workspace.fs.writeFile(secondUri, Buffer.from(SECOND_MODIFIED));
     await waitForWatcher();
-    assert.strictEqual((await getCodeLenses(sampleUri)).length, 3);
-    assert.strictEqual((await getCodeLenses(secondUri)).length, 3);
+    assert.strictEqual((await getCodeLenses(sampleUri)).length, 4);
+    assert.strictEqual((await getCodeLenses(secondUri)).length, 4);
 
     await vscode.commands.executeCommand("cursorForgery.acceptAll");
 

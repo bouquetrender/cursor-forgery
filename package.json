@@ -33,6 +33,11 @@
         "icon": "$(discard)"
       },
       {
+        "command": "cursorForgery.requestHunkChange",
+        "title": "Agent Review: Request Change",
+        "icon": "$(comment-discussion)"
+      },
+      {
         "command": "cursorForgery.openHunkDiff",
         "title": "Agent Review: View Before ↔ After"
       },

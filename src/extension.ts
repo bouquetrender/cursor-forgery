@@ -101,6 +101,10 @@ export function activate(context: vscode.ExtensionContext): void {
       (target, hunkId) => hunkCommands.rejectHunk(target, hunkId),
     ),
     vscode.commands.registerCommand(
+      "cursorForgery.requestHunkChange",
+      (target, hunkId) => hunkCommands.requestHunkChange(target, hunkId),
+    ),
+    vscode.commands.registerCommand(
       "cursorForgery.openHunkDiff",
       (target, hunkId) => hunkCommands.openHunkDiff(target, hunkId),
     ),

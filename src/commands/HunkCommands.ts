@@ -61,6 +61,39 @@ export class HunkCommands {
     await this.session.recompute(uri);
   }
 
+  async requestHunkChange(
+    target?: HunkCommandTarget | string,
+    hunkId?: string,
+  ): Promise<void> {
+    const resolved = this.resolveHunk(target, hunkId);
+    if (!resolved) {
+      return this.showNoHunkMessage();
+    }
+    if (!vscode.extensions.getExtension("openai.chatgpt")) {
+      void vscode.window.showInformationMessage(
+        "Install and enable the Codex extension to request a change.",
+      );
+      return;
+    }
+
+    const { uri } = resolved;
+    await this.session.recompute(uri);
+    const hunk = this.diffs.getHunk(uri, resolved.hunk.id);
+    if (!hunk) {
+      return;
+    }
+
+    const document = await vscode.workspace.openTextDocument(uri);
+    const editor = await vscode.window.showTextDocument(document, {
+      preview: false,
+    });
+    editor.selection = new vscode.Selection(
+      document.positionAt(hunk.currentStartOffset),
+      document.positionAt(hunk.currentEndOffset),
+    );
+    await vscode.commands.executeCommand("chatgpt.addToThread");
+  }
+
   async openHunkDiff(target?: HunkCommandTarget | string, hunkId?: string): Promise<void> {
     const resolved = this.resolveHunk(target, hunkId);
     if (!resolved) {

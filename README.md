@@ -13,7 +13,7 @@ coding agents. It does not call an AI API or modify how an agent works.
 2. Let Codex, Claude, or another tool edit files in the open workspace.
 3. Open **AGENT CHANGES** in the Explorer.
 4. Select a hunk to open VS Code's native diff editor at that change.
-5. Use the `Accept` / `Reject` CodeLens above the changed lines, or use file/all
+5. Use the `Accept` / `Reject` / `Request Change` CodeLens above the changed lines, or use file/all
    commands from the tree and Command Palette.
 
 When the official Codex extension is installed and enabled, selecting code shows
@@ -36,6 +36,7 @@ state and clears those pending hunks.
 - `Agent Review: View Before ↔ After`
 - `Agent Review: Accept Hunk`
 - `Agent Review: Reject Hunk`
+- `Agent Review: Request Change`
 - `Agent Review: Accept File`
 - `Agent Review: Reject File`
 - `Agent Review: Accept All`

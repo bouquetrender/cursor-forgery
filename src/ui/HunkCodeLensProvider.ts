@@ -39,6 +39,11 @@ export class HunkCodeLensProvider
           command: "cursorForgery.rejectHunk",
           arguments: args,
         }),
+        new vscode.CodeLens(range, {
+          title: "$(comment-discussion) Request Change",
+          command: "cursorForgery.requestHunkChange",
+          arguments: args,
+        }),
       ];
     });
   }

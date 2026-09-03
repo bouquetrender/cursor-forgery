@@ -12,7 +12,7 @@
 2. 让 Codex、Claude 或其他工具编辑当前工作区中的文件。
 3. 在资源管理器中打开 **AGENT CHANGES**。
 4. 选择一个变更块，在对应变更位置打开 VS Code 原生差异编辑器。
-5. 使用变更行上方 CodeLens 中的 `Accept` / `Reject`，或使用树视图和命令面板中的
+5. 使用变更行上方 CodeLens 中的 `Accept` / `Reject` / `Request Change`，或使用树视图和命令面板中的
    文件级/全部操作命令。
 
 安装并启用官方 Codex 扩展后，在编辑器中选择代码，选区起始行上方会显示
@@ -21,6 +21,8 @@
 
 接受变更块时，当前文件保持不变，仅推进基线中的对应部分。拒绝变更块时，则通过
 `WorkspaceEdit` 恢复基线文本。每次操作都会重新计算受影响文件的所有变更块。
+
+点击 `Request Change` 会选中该变更块的当前代码，并将其加入 Codex 对话，便于直接说明需要如何调整。
 
 在 VS Code 中直接输入的编辑会被视为用户自己的工作，并自动推进基线，而不会创建待审查的
 变更块。如果文件中已有待处理的智能体变更，编辑该文件即表示用户接管其完整的当前状态，
@@ -32,6 +34,7 @@
 - `Agent Review: View Before ↔ After`
 - `Agent Review: Accept Hunk`
 - `Agent Review: Reject Hunk`
+- `Agent Review: Request Change`
 - `Agent Review: Accept File`
 - `Agent Review: Reject File`
 - `Agent Review: Accept All`
