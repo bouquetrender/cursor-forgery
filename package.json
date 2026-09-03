@@ -1,0 +1,131 @@
+{
+  "name": "cursor-forgery",
+  "displayName": "cursor-forgery",
+  "description": "Emulate Cursor-style editor interactions for Codex context and agent change review.",
+  "version": "0.0.6",
+  "publisher": "local",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished",
+    "onCommand:cursorForgery.startSession",
+    "onView:cursorForgery.changes"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "cursorForgery.startSession",
+        "title": "Agent Review: Start Session"
+      },
+      {
+        "command": "cursorForgery.acceptHunk",
+        "title": "Agent Review: Accept Hunk",
+        "icon": "$(check)"
+      },
+      {
+        "command": "cursorForgery.rejectHunk",
+        "title": "Agent Review: Reject Hunk",
+        "icon": "$(discard)"
+      },
+      {
+        "command": "cursorForgery.openHunkDiff",
+        "title": "Agent Review: View Before ↔ After"
+      },
+      {
+        "command": "cursorForgery.acceptFile",
+        "title": "Agent Review: Accept File",
+        "icon": "$(check-all)"
+      },
+      {
+        "command": "cursorForgery.rejectFile",
+        "title": "Agent Review: Reject File",
+        "icon": "$(discard)"
+      },
+      {
+        "command": "cursorForgery.acceptAll",
+        "title": "Agent Review: Accept All",
+        "icon": "$(check-all)"
+      },
+      {
+        "command": "cursorForgery.rejectAll",
+        "title": "Agent Review: Reject All",
+        "icon": "$(trash)"
+      }
+    ],
+    "views": {
+      "explorer": [
+        {
+          "id": "cursorForgery.changes",
+          "name": "AGENT CHANGES"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "cursorForgery.changes",
+        "contents": "No pending agent changes.\n[Start Review Session](command:cursorForgery.startSession)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "cursorForgery.acceptAll",
+          "when": "view == cursorForgery.changes",
+          "group": "navigation@1"
+        },
+        {
+          "command": "cursorForgery.rejectAll",
+          "when": "view == cursorForgery.changes",
+          "group": "navigation@2"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "cursorForgery.acceptFile",
+          "when": "view == cursorForgery.changes && viewItem == cursorForgery.file",
+          "group": "inline@1"
+        },
+        {
+          "command": "cursorForgery.rejectFile",
+          "when": "view == cursorForgery.changes && viewItem == cursorForgery.file",
+          "group": "inline@2"
+        },
+        {
+          "command": "cursorForgery.acceptHunk",
+          "when": "view == cursorForgery.changes && viewItem == cursorForgery.hunk",
+          "group": "inline@1"
+        },
+        {
+          "command": "cursorForgery.rejectHunk",
+          "when": "view == cursorForgery.changes && viewItem == cursorForgery.hunk",
+          "group": "inline@2"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "test:unit": "npm run compile && mocha --ui tdd 'out/test/unit/**/*.test.js'",
+    "test:integration": "npm run compile && node ./out/test/runTest.js",
+    "test": "npm run test:unit && npm run test:integration"
+  },
+  "dependencies": {
+    "diff": "5.2.0"
+  },
+  "devDependencies": {
+    "@types/diff": "5.2.1",
+    "@types/mocha": "10.0.1",
+    "@types/node": "16.18.68",
+    "@types/vscode": "1.85.0",
+    "@vscode/test-electron": "2.3.8",
+    "mocha": "10.2.0",
+    "typescript": "5.3.3"
+  }
+}
