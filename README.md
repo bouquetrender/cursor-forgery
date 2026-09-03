@@ -3,9 +3,9 @@
 [English](README.md) | [简体中文](README.zh-CN.md)
 
 `cursor-forgery` is a VS Code extension that emulates Cursor interactions. It
-reviews changes made by agents to code files and can quickly add a code selection
-or an entire file to a Codex thread. The extension does not call any APIs or
-change how agents work.
+reviews changes made by agents to code files and can quickly add a code selection,
+an entire file, or the current folder to a Codex thread. The extension does not
+call any APIs or change how agents work.
 
 ## Workflow
 
@@ -36,7 +36,7 @@ updates its baseline and clears its pending review changes.
 ## Codex context
 
 With the official Codex extension installed, select code to use
-`Add to Codex Thread` or `Add File to Codex Thread`.
+`Add Selection`, `Add File`, or `Add Folder`.
 
 ## Commands
 

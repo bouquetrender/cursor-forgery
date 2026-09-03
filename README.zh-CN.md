@@ -2,7 +2,7 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-`cursor-forgery` 是一个模仿 Cursor 交互操作的 VS Code 扩展插件，用于审查 Agent 对代码文件的修改，也可快速将代码选区或整个文件加入 Codex 对话。插件不调用任何 API，也不会修改 Agent 的工作方式。
+`cursor-forgery` 是一个模仿 Cursor 交互操作的 VS Code 扩展插件，用于审查 Agent 对代码文件的修改，也可快速将代码选区、整个文件或当前文件夹加入 Codex 对话。插件不调用任何 API，也不会修改 Agent 的工作方式。
 
 ## 使用流程
 
@@ -27,8 +27,8 @@
 
 ## Codex 上下文
 
-安装官方 Codex 扩展后，选中代码即可使用 `Add to Codex Thread` 和
-`Add File to Codex Thread`，将选区或整个文件加入 Codex 对话。
+安装官方 Codex 扩展后，选中代码即可使用 `Add Selection`、`Add File`
+或 `Add Folder`，将选区、整个文件或当前文件所在文件夹加入 Codex 对话。
 
 ## 命令
 

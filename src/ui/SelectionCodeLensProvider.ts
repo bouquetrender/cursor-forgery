@@ -1,3 +1,4 @@
+import * as path from "path";
 import * as vscode from "vscode";
 
 export class SelectionCodeLensProvider
@@ -35,13 +36,18 @@ export class SelectionCodeLensProvider
     const position = editor.selection.start;
     return [
       new vscode.CodeLens(new vscode.Range(position, position), {
-        title: "$(comment-discussion) Add to Codex Thread",
+        title: "$(comment-discussion) Add Selection",
         command: "chatgpt.addToThread",
       }),
       new vscode.CodeLens(new vscode.Range(position, position), {
-        title: "$(file-add) Add File to Codex Thread",
+        title: "$(file-add) Add File",
         command: "chatgpt.addFileToThread",
         arguments: [document.uri],
+      }),
+      new vscode.CodeLens(new vscode.Range(position, position), {
+        title: "$(folder-opened) Add Folder",
+        command: "chatgpt.addFileToThread",
+        arguments: [vscode.Uri.file(path.dirname(document.uri.fsPath))],
       }),
     ];
   }
