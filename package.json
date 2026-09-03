@@ -2,8 +2,13 @@
   "name": "cursor-forgery",
   "displayName": "cursor-forgery",
   "description": "Emulate Cursor-style editor interactions for Codex context and agent change review.",
-  "version": "0.0.6",
+  "version": "0.1.0",
   "publisher": "local",
+  "author": "liujw",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bouquetrender/cursor-forgery.git"
+  },
   "engines": {
     "vscode": "^1.85.0"
   },
