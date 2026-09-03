@@ -2,9 +2,10 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-`cursor-forgery` is a VS Code extension for reviewing text-file changes made by
-external coding agents. It can also add a code selection or an entire file to a
-Codex thread. It does not call an AI API or change how an agent works.
+`cursor-forgery` is a VS Code extension that emulates Cursor interactions. It
+reviews changes made by agents to code files and can quickly add a code selection
+or an entire file to a Codex thread. The extension does not call any APIs or
+change how agents work.
 
 ## Workflow
 
