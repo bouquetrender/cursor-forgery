@@ -45,7 +45,7 @@
 ## 验证与交付
 
 1. 通过阅读调用路径确认改动不会破坏既有状态流。
-2. 仅在用户明确要求时运行验证命令；可用命令为 `npm run compile`、`npm run test:unit` 和 `npm run test:integration`。
+2. 验证可用命令为 `npm run compile`、`npm run test:unit` 和 `npm run test:integration`，如果创建了新的功能，需要补充对应的测试用例。
 3. 交付时说明修改的文件、未运行的验证及其原因，以及仍需用户决定的事项。
 
 ## 避免事项
