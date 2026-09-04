@@ -88,7 +88,7 @@
     "viewsWelcome": [
       {
         "view": "cursorForgery.changes",
-        "contents": "No pending agent changes.\n[Start Review Session](command:cursorForgery.startSession)"
+        "contents": "No pending agent changes."
       }
     ],
     "menus": {
