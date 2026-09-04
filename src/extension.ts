@@ -38,7 +38,7 @@ export function activate(context: vscode.ExtensionContext): void {
     baselineProvider.refresh(uri),
   );
   let sessionStartInProgress = false;
-  const startSession = async (): Promise<void> => {
+  const startSession = async (isReset = false): Promise<void> => {
     if (sessionStartInProgress) {
       void vscode.window.showInformationMessage(
         "Agent Review is already capturing a baseline.",
@@ -51,14 +51,14 @@ export function activate(context: vscode.ExtensionContext): void {
       const result = await vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
-          title: "Starting Agent Review session",
+          title: `${isReset ? "Resetting" : "Starting"} Agent Review session`,
           cancellable: false,
         },
         (_progress, _token) =>
           session.start((message) => _progress.report({ message })),
       );
       void vscode.window.showInformationMessage(
-        `Agent Review session started with ${result.fileCount} files using a ${result.kind} baseline.`,
+        `Agent Review session ${isReset ? "reset" : "started"} with ${result.fileCount} files using a ${result.kind} baseline.`,
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -93,6 +93,9 @@ export function activate(context: vscode.ExtensionContext): void {
       selectionCodeLensProvider,
     ),
     vscode.commands.registerCommand("cursorForgery.startSession", startSession),
+    vscode.commands.registerCommand("cursorForgery.resetSession", () =>
+      startSession(true),
+    ),
     vscode.commands.registerCommand(
       "cursorForgery.acceptHunk",
       (target, hunkId) => hunkCommands.acceptHunk(target, hunkId),

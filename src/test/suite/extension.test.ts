@@ -46,6 +46,7 @@ suite("Agent Diff Review extension", () => {
     const commands = await vscode.commands.getCommands(true);
     for (const command of [
       "cursorForgery.startSession",
+      "cursorForgery.resetSession",
       "cursorForgery.openHunk",
       "cursorForgery.openHunkDiff",
       "cursorForgery.acceptHunk",
@@ -112,6 +113,24 @@ suite("Agent Diff Review extension", () => {
     assert.ok(reject?.arguments);
     await vscode.commands.executeCommand(reject.command, ...reject.arguments);
     assert.strictEqual(document.getText(), ORIGINAL);
+  });
+
+  test("reset clears agent changes and captures the current files as a new baseline", async () => {
+    await vscode.workspace.fs.writeFile(sampleUri, Buffer.from(MODIFIED));
+    await waitForWatcher();
+    assert.strictEqual((await getCodeLenses(sampleUri)).length, 4);
+
+    await vscode.commands.executeCommand("cursorForgery.resetSession");
+
+    assert.strictEqual(
+      (await vscode.workspace.openTextDocument(sampleUri)).getText(),
+      MODIFIED,
+    );
+    assert.strictEqual((await getCodeLenses(sampleUri)).length, 0);
+
+    await vscode.workspace.fs.writeFile(sampleUri, Buffer.from(ORIGINAL));
+    await waitForWatcher();
+    assert.strictEqual((await getCodeLenses(sampleUri)).length, 4);
   });
 
   test("separates pending and historical changes and opens their tree rows", async () => {

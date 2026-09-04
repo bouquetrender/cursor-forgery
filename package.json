@@ -18,6 +18,7 @@
   "activationEvents": [
     "onStartupFinished",
     "onCommand:cursorForgery.startSession",
+    "onCommand:cursorForgery.resetSession",
     "onView:cursorForgery.changes"
   ],
   "main": "./out/extension.js",
@@ -26,6 +27,11 @@
       {
         "command": "cursorForgery.startSession",
         "title": "Agent Review: Start Session"
+      },
+      {
+        "command": "cursorForgery.resetSession",
+        "title": "Agent Review: Reset Session",
+        "icon": "$(clear-all)"
       },
       {
         "command": "cursorForgery.acceptHunk",
@@ -96,6 +102,11 @@
           "command": "cursorForgery.rejectAll",
           "when": "view == cursorForgery.changes",
           "group": "navigation@2"
+        },
+        {
+          "command": "cursorForgery.resetSession",
+          "when": "view == cursorForgery.changes",
+          "group": "navigation@3"
         }
       ],
       "view/item/context": [
